@@ -4,59 +4,6 @@ Created on Wed Jul  5 11:37:41 2023
 
 @author: Tristan Tan
 """
-'''
-import pandas as pd
-import matplotlib.pyplot as plt
-
-# Read the dataset into a pandas DataFrame
-df = pd.read_csv('C:\\Users\\Tristan Tan\\.spyder-py3\\5011CEM\\2019-Oct.csv\\2019-Oct.csv', nrows=100)
-
-# Group the data by category_code and calculate the total price for each category
-category_prices = df.groupby('category_code')['price'].sum()
-
-# Extract the category codes and prices
-category_codes = category_prices.index
-prices = category_prices.values
-
-# Plot the pie chart
-plt.pie(prices, labels=category_codes, autopct='%1.1f%%')
-
-# Set the aspect ratio to make the pie chart a circle
-plt.axis('equal')
-
-# Set the title
-plt.title('Prices by Category')
-
-# Display the plot
-plt.show()'''
-'''
-import pandas as pd
-import matplotlib.pyplot as plt
-
-# Read the dataset into a pandas DataFrame
-df = pd.read_csv('C:\\Users\\Tristan Tan\\.spyder-py3\\5011CEM\\2019-Oct.csv\\2019-Oct.csv', nrows=850)
-
-# Group the data by category_code and calculate the total price for each category
-category_prices = df.groupby('brand')['price'].sum()
-
-# Extract the category codes and prices
-category_codes = category_prices.index
-prices = category_prices.values
-
-# Set the figure size
-plt.figure(figsize=(12, 15))  # Adjust the values as desired
-
-# Plot the pie chart
-plt.pie(prices, labels=category_codes, autopct='%1.1f%%')
-
-# Set the aspect ratio to make the pie chart a circle
-plt.axis('equal')
-
-# Set the title
-plt.title('Prices by Category')
-
-# Display the plot
-plt.show()'''
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -87,6 +34,7 @@ ax2 = fig.add_subplot(3,1,2)
 ax2.pie(top_10_category, labels=top_10_category.index, autopct = '%1.1f%%')
 ax2.set_title('Top 10 Categories')
 
+#event_type data
 event_type = data['event_type'].value_counts()
 
 ax3 = fig.add_subplot(3,1,3)
