@@ -23,10 +23,11 @@ pivot_table.plot.area(alpha=0.8)
 # Add labels and title to the graph
 plt.xlabel('Year')
 plt.ylabel('Number of Purchases')
-plt.title('Top Jewelry Categories and Purchases by Year')
+plt.title('Top Jewelry Categories and Purchases by Year', fontweight='bold')
 
 # Rotate the x-axis tick labels for better readability
 plt.xticks(rotation=45)
 
 # Display the area graph
 plt.show()
+
