@@ -21,9 +21,9 @@ pivot_table = top_categories_per_year.pivot(index='year', columns='category_code
 pivot_table.plot.area(alpha=0.8)
 
 # Add labels and title to the graph
-plt.xlabel('Year')
-plt.ylabel('Number of Purchases')
-plt.title('Top Jewelry Categories and Purchases by Year', fontweight='bold')
+plt.xlabel('Year'.upper(), fontweight='bold', fontsize=14)
+plt.ylabel('Number of Purchases'.upper(), fontweight='bold', fontsize=14)
+plt.title('Top Jewelry Categories and Purchases by Year'.upper(), fontweight='bold', fontsize=14)
 
 # Rotate the x-axis tick labels for better readability
 plt.xticks(rotation=45)
