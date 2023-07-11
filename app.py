@@ -16,7 +16,7 @@ from textwrap import wrap
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
-#from wordcloud import WordCloud
+from wordcloud import WordCloud
 
 # Load the electronic dataset
 electronic_data = pd.read_csv('modified.csv')
@@ -814,9 +814,10 @@ def bubblegraph():
     # Show the plot
     st.pyplot(fig)
 
-"""def wordcloud():
+def wordcloud():
+    # Load the data
     data = pd.read_csv('modified2.csv')
-    
+
     # Create a WordCloud object
     wordcloud = WordCloud(width=800, height=400, background_color='white')
 
@@ -828,11 +829,13 @@ def bubblegraph():
     wordcloud.generate(text)
 
     # Plot the word cloud
-    plt.figure(figsize=(10, 6))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
-    plt.title('Word Cloud - Gem')
-    plt.show()"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis('off')
+    ax.set_title('Word Cloud - Gem')
+
+    # Display the word cloud in Streamlit
+    st.pyplot(fig)
 
 # Show the plot
 plt.show()
@@ -1109,7 +1112,7 @@ def main():
     button_scatter = st.button('Scatter Plot')
     button_area = st.button('Area Chart')
     button_bubble = st.button('Bubble Graph')
-    #button_cloud = st.button('Word Cloud')
+    button_cloud = st.button('Word Cloud')
     button_heat = st.button('Heatmap')
     button_rand = st.button('Random Forest Classification')
     button_assoc = st.button('Association')
@@ -1146,8 +1149,8 @@ def main():
         donutchart()
     elif button_bubble:
         bubblegraph()
-    #elif button_cloud:
-        #wordcloud()
+    elif button_cloud:
+        wordcloud()
     elif button_heat:
         heatmap1()
         heatmap2()   
