@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import networkx as nx
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from mlxtend.preprocessing import TransactionEncoder
@@ -15,6 +16,7 @@ from textwrap import wrap
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
+#from wordcloud import WordCloud
 
 # Load the electronic dataset
 electronic_data = pd.read_csv('modified.csv')
@@ -24,33 +26,43 @@ jewelry_data = pd.read_csv('modified2.csv')
 
 # Function to create the first scatter plot
 def scatter_plot1():
-    # MANIPULATING THE DATA
-    # Check for missing data
-    jewelry_data.dropna(inplace=True)
-    electronic_data.dropna(inplace=True)
-
-    # Compare only certain categories in scatter plot
+    # Change all same values at once (main objective is to make names shorter)
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.tablet', 'tablet')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.audio.headphone', 'headphone')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.smartphone', 'smartphone')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.video.tv', 'tv')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.clocks', 'clocks')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.telephone', 'telephone')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('electronics.tablet', 'tablet')
+    
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.personal.scales', 'scales')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.kitchen.refrigerators', 'refrigerators')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.kitchen.kettle', 'kettle')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.kitchen.blender', 'blender')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.kitchen.mixer', 'mixer')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.kitchen.washer', 'washer')
+    electronic_data['category_code'] = electronic_data['category_code'].replace('appliances.iron', 'iron')
+    
+    # Filter electronic data for specific categories
     specific_categories = ['tablet', 'headphone', 'smartphone', 'tv', 'clocks']
     filtered_electronic_data = electronic_data[electronic_data['category_code'].isin(specific_categories)]
-
-    # Create a figure and axis object
-    fig, ax = plt.subplots()
-
+    
     # Create scatter plot for electronic dataset
+    fig, ax = plt.subplots()
     ax.scatter(filtered_electronic_data['price'], filtered_electronic_data['category_code'], color='blue', label='Electronic')
-
+    
     # Create scatter plot for jewelry dataset
     ax.scatter(jewelry_data['price'], jewelry_data['category_code'], color='red', label='Jewelry')
-
+    
     # Set plot title and labels
     ax.set_title('Scatter Plot - Price vs Category')
     ax.set_xlabel('Price')
     ax.set_ylabel('Category')
-
+    
     # Add legend
     ax.legend()
-
-    # Show the scatter plot
+    
+    # Show the scatter plot in Streamlit
     st.pyplot(fig)
 
 # Function to create the second scatter plot
@@ -398,6 +410,32 @@ def barchart4():
     # Show the plot
     st.pyplot(fig)
 
+def recommend_graph():  
+    
+    # Group the data by category_code and colour, and calculate the count
+    category_colour_counts = jewelry_data.groupby(['category_code', 'colour']).size().reset_index(name='count')
+
+    # Pivot the data to have category_code as rows and colour as columns
+    pivot_data = category_colour_counts.pivot(index='category_code', columns='colour', values='count')
+
+    # Sort the categories based on the total count of colours in descending order
+    sorted_categories = pivot_data.sum().sort_values(ascending=False).index
+
+    # Reorder the columns based on the sorted categories
+    pivot_data = pivot_data[sorted_categories]
+
+    # Plot the colour distribution as a stacked bar chart
+    fig, ax = plt.subplots(figsize=(12, 8))
+    sns.set_palette("husl")
+    pivot_data.plot(kind='bar', stacked=True, ax=ax)
+    ax.set_xlabel('Category')
+    ax.set_ylabel('Count')
+    ax.set_title('Colour Distribution by Category')
+    ax.legend(title='Colour')
+
+    # Show the plot in Streamlit
+    st.pyplot(fig)
+    
 #function to plot pie chart
 def piechart():
     data = pd.read_csv('2019-Oct behaviour data.csv', nrows=100000)
@@ -443,7 +481,52 @@ def piechart():
     # Show the plot
     st.pyplot(fig)
     
+def piechart_gender():
+    data = pd.read_csv('modified2.csv')
     
+    # Calculate the count of each gender
+    gender_counts = data['gender'].value_counts()
+
+    # Define the colours
+    colours = ['red', 'blue']
+
+    # Create a pie chart
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.pie(gender_counts, labels=gender_counts.index, colors=colours, autopct='%1.1f%%', startangle=90)
+    ax.set_title('What gender purchase in jewelry store')
+    ax.axis('equal')
+
+    # Show the plot in Streamlit
+    st.pyplot(fig)
+
+def donutchart():
+    data = pd.read_csv('jewelry.csv')
+    
+    # Filter the data to include only rows with non-missing values in the material column
+    filtered_data = data.dropna(subset=['material'])
+
+    # Count the number of occurrences of each material category
+    material_counts = filtered_data['material'].value_counts()
+
+    # Combine all categories except "gold" into a single category "Other"
+    other_count = material_counts[~(material_counts.index == 'gold')].sum()
+    material_counts = pd.Series({'gold': material_counts['gold'], 'Other': other_count})
+
+    # Create the donut chart
+    fig, ax = plt.subplots()
+    wedges, text, autotext = ax.pie(material_counts, labels=material_counts.index, autopct='%1.1f%%', startangle=90, wedgeprops=dict(width=0.4))
+    plt.setp(autotext, size=10, weight='bold')  # Adjust the size and weight of the percentage labels
+    ax.set_title('Material of jewelry purchase in jewelry store')
+
+    # Add a circle in the center to create the donut shape
+    center_circle = plt.Circle((0, 0), 0.3, fc='white')
+    ax.add_artist(center_circle)
+
+    plt.axis('equal')
+
+    # Show the plot in Streamlit
+    st.pyplot(fig)
+
 def linegraph1():
 
     # Convert event_time to datetime
@@ -730,35 +813,33 @@ def bubblegraph():
 
     # Show the plot
     st.pyplot(fig)
+
+"""def wordcloud():
+    data = pd.read_csv('modified2.csv')
     
-# Convert event_time to datetime
-jewelry_data['event_time'] = pd.to_datetime(jewelry_data['event_time'])
+    # Create a WordCloud object
+    wordcloud = WordCloud(width=800, height=400, background_color='white')
 
-# Extract the year from event_time
-jewelry_data['year'] = jewelry_data['event_time'].dt.year
+    # Create a text string by joining all the unique words in the "gem" column
+    unique_words = data['gem'].unique()
+    text = ' '.join(unique_words)
 
-# Filter out missing values and negative prices
-jewelry_data = jewelry_data.dropna(subset=['price'])
-jewelry_data = jewelry_data[jewelry_data['price'] > 0]
+    # Generate the word cloud for the combined text string
+    wordcloud.generate(text)
 
-# Calculate the revenue of jewelry for each year
-revenue_by_year = jewelry_data.groupby('year')['price'].sum()
-
-# Create a line graph
-plt.plot(revenue_by_year.index, revenue_by_year.values, marker='o')
-
-# Set the title and axis labels
-plt.title('Revenue of Jewelry by Year')
-plt.xlabel('Year')
-plt.ylabel('Revenue')
-
-# Show the grid
-plt.grid(True)
+    # Plot the word cloud
+    plt.figure(figsize=(10, 6))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title('Word Cloud - Gem')
+    plt.show()"""
 
 # Show the plot
 plt.show()
 #function to create heatmap1
 def heatmap1():
+    electronic_data = pd.read_csv('electronics.csv', nrows=10000)
+    
     filtered_data = electronic_data[['category_id','product_id','order_id','price','user_id']]
 
     colors = ['#003f5c', '#444e86', '#955196', '#dd5182', '#ff6e54', '#ffa600']
@@ -793,12 +874,9 @@ def heatmap2():
 
 #machine models
 #random forest classification algo
-def randomforest():
+def random_forest():
     # Load the jewelry dataset
     jewelry_data = pd.read_csv('modified2.csv')
-    
-    # Drop rows with missing values
-    jewelry_data.dropna(inplace=True)
     
     # Select features and target variable
     features = jewelry_data[['product_id', 'brand_id', 'price', 'user_id']]
@@ -816,32 +894,94 @@ def randomforest():
     # Model Training
     model.fit(X_train, y_train)
     
-    # Feature Importance
-    importance = model.feature_importances_
+    # Model Prediction
+    y_pred = model.predict(X_test)
     
-    # Sort feature importance in descending order
-    sorted_indices = importance.argsort()[::-1]
-    sorted_importance = importance[sorted_indices]
+    # Model Evaluation
+    accuracy = accuracy_score(y_test, y_pred)
+    st.write('Accuracy:', accuracy)
     
-    # Get the feature names
-    feature_names = features_encoded.columns[sorted_indices]
+    # Create confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
     
-    # Create a figure and axis object
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Plot the feature importance
-    ax.bar(feature_names, sorted_importance)
-    ax.set_xticklabels(feature_names, rotation=45)
-    ax.set_xlabel('Features')
-    ax.set_ylabel('Importance')
-    ax.set_title('Feature Importance')
-    plt.tight_layout()
-    
-    # Show the plot
+    # Plot confusion matrix as heatmap
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    ax.set_title('Confusion Matrix')
+    ax.set_xlabel('Predicted Labels')
+    ax.set_ylabel('True Labels')
+
+    # Show the plot in Streamlit
     st.pyplot(fig)
 
 #association algo 
 def association():
+    # Load the jewelry dataset
+    jewelry_data = pd.read_csv('modified2.csv')
+
+    # Select relevant columns
+    data = jewelry_data[['order_id', 'product_id', 'category_code']]
+
+    # Convert the data to a transactional format
+    transactions = data.groupby(['order_id', 'product_id'])['category_code'].apply(list).reset_index()
+
+    # Convert the transactional data to a boolean DataFrame
+    te = TransactionEncoder()
+    data_encoded = te.fit_transform(transactions['category_code'])
+    transactions_encoded = pd.DataFrame(data_encoded, columns=te.columns_)
+
+    # Generate frequent itemsets using Apriori algorithm
+    frequent_itemsets = apriori(transactions_encoded, min_support=0.01, use_colnames=True)
+
+    # Generate association rules
+    rules = association_rules(frequent_itemsets, metric='confidence', min_threshold=1.0)
+
+    # Create a network graph of association rules
+    G = nx.DiGraph()
+    for i in range(len(rules)):
+        antecedents = ', '.join(rules.iloc[i]['antecedents'])
+        consequents = ', '.join(rules.iloc[i]['consequents'])
+        G.add_edge(antecedents, consequents)
+
+    # Plot the network graph with increased spacing
+    fig, ax = plt.subplots(figsize=(10, 8))
+    pos = nx.spring_layout(G, k=1.5)  # Increase the k value for more spacing
+    nx.draw_networkx(G, pos, with_labels=True, node_size=500, node_color='lightblue', edge_color='gray')
+    ax.set_title('Association Rules Network Graph')
+    ax.axis('off')
+    plt.tight_layout()
+
+    # Show the graph in Streamlit
+    st.pyplot(fig)
+    
+def association2():
+    # Load the jewelry dataset
+    jewelry_data = pd.read_csv('modified2.csv')
+
+    # Select relevant columns
+    data = jewelry_data[['order_id', 'product_id', 'category_code']]
+
+    # Convert the data to a transactional format
+    transactions = data.groupby(['order_id', 'product_id'])['category_code'].apply(list).reset_index()
+
+    # Convert the transactional data to a boolean DataFrame
+    te = TransactionEncoder()
+    data_encoded = te.fit_transform(transactions['category_code'])
+    transactions_encoded = pd.DataFrame(data_encoded, columns=te.columns_)
+
+    # Generate frequent itemsets using Apriori algorithm
+    frequent_itemsets = apriori(transactions_encoded, min_support=0.01, use_colnames=True)
+
+    # Generate association rules
+    rules = association_rules(frequent_itemsets, metric='confidence', min_threshold=0.5)
+
+    # Display the association rules
+    st.write(rules)
+
+def association3():
+    # Load the jewelry dataset
+    jewelry_data = pd.read_csv('modified2.csv')
+
     # Drop rows with missing values
     jewelry_data.dropna(inplace=True)
 
@@ -868,7 +1008,7 @@ def association():
     # Select 20 random association rules
     random_sample = random_rules.head(20)
 
-    # Plot the random sample of 20 rules by lift with wrapped text labels and light pink color for all bars
+    # Create the plot
     fig, ax = plt.subplots(figsize=(10, 8))
     antecedents_labels = ['\n'.join(wrap(', '.join(map(str, antecedent)), width=20)) for antecedent in random_sample['antecedents']]
     ax.barh(antecedents_labels, random_sample['lift'], color='#FFC0CB')  # Light pink color code: #FFC0CB
@@ -879,9 +1019,9 @@ def association():
 
     # Show the plot in Streamlit
     st.pyplot(fig)
-
+    
 #logistic regression algo
-def logistic_regression():
+def ligistic_regression():
     # Select features and target variable
     features = jewelry_data[['product_id', 'brand_id', 'price', 'user_id']]
     target = jewelry_data['category_code']
@@ -915,6 +1055,46 @@ def logistic_regression():
 
     # Show the plot in Streamlit
     st.pyplot(fig)
+
+def logistic_regression():
+    # Load the jewelry dataset
+    jewelry_data = pd.read_csv('modified2.csv')
+
+    # Select features and target variable
+    features = jewelry_data[['product_id', 'brand_id', 'price', 'user_id']]
+    target = jewelry_data['category_code']
+
+    # Perform one-hot encoding on the "brand" column
+    features_encoded = pd.get_dummies(features, columns=['brand_id'])
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(features_encoded, target, test_size=0.2, random_state=42)
+
+    # Choose a model (Logistic Regression)
+    model = LogisticRegression()
+
+    # Model Training
+    model.fit(X_train, y_train)
+
+    # Model Prediction
+    y_pred = model.predict(X_test)
+
+    # Model Evaluation
+    accuracy = accuracy_score(y_test, y_pred)
+    st.write('Accuracy:', accuracy)
+
+    # Create confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+
+    # Plot confusion matrix as heatmap
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    ax.set_title('Confusion Matrix')
+    ax.set_xlabel('Predicted Labels')
+    ax.set_ylabel('True Labels')
+
+    # Show the plot in Streamlit
+    st.pyplot(fig)
     
 # Create the Streamlit app
 def main():
@@ -925,9 +1105,11 @@ def main():
     button_pie = st.button('Pie Chart')
     button_line = st.button('Line Graph')
     button_hist = st.button('Histogram')
+    button_donut = st.button('Donut Chart')
     button_scatter = st.button('Scatter Plot')
     button_area = st.button('Area Chart')
     button_bubble = st.button('Bubble Graph')
+    #button_cloud = st.button('Word Cloud')
     button_heat = st.button('Heatmap')
     button_rand = st.button('Random Forest Classification')
     button_assoc = st.button('Association')
@@ -940,6 +1122,7 @@ def main():
         scatter_plot3()
     elif button_pie:
         piechart()
+        piechart_gender()
     elif button_area:
         areachart1()
         areachart2()
@@ -948,6 +1131,7 @@ def main():
         barchart2()
         barchart3()
         barchart4()
+        recommend_graph()
     elif button_line:
         linegraph1()
         linegraph2()
@@ -958,15 +1142,21 @@ def main():
         histogram5()
         histogram3()
         histogram4()
+    elif button_donut:
+        donutchart()
     elif button_bubble:
         bubblegraph()
+    #elif button_cloud:
+        #wordcloud()
     elif button_heat:
         heatmap1()
         heatmap2()   
     elif button_rand:
-        randomforest()
+        random_forest()
     elif button_assoc:
-        association()
+       #association()
+        association2()
+        association3()
     elif button_logistic:
         logistic_regression()
 
