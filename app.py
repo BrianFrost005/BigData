@@ -6,8 +6,11 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import seaborn as sns
 import networkx as nx
+import warnings
+import squarify
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from mlxtend.preprocessing import TransactionEncoder
@@ -234,6 +237,57 @@ def areachart2():
     # Display the area graph
     st.pyplot(plt.gcf())  # Pass the figure object plt.gcf() to st.pyplot()
 
+def areachart3():
+    # Load the jewelry dataset
+    df_jewelry = pd.read_csv('modified2.csv')
+
+    # Preprocessing for jewelry dataset
+    # Convert event_time to datetime
+    df_jewelry['event_time'] = pd.to_datetime(df_jewelry['event_time'])
+    # Extract year from event_time
+    df_jewelry['year'] = df_jewelry['event_time'].dt.year
+
+    # Load a subset of the electronic dataset for faster processing
+    df_electronics = pd.read_csv('modified.csv', nrows=10000)
+
+    # Preprocessing for electronics dataset
+    # Convert event_time to datetime
+    df_electronics['event_time'] = pd.to_datetime(df_electronics['event_time'])
+    # Extract year from event_time
+    df_electronics['year'] = df_electronics['event_time'].dt.year
+
+    # Perform necessary calculations and aggregations
+    jewelry_counts = df_jewelry.groupby(['year', 'category_code']).size().reset_index(name='Number of Purchases')
+    electronics_counts = df_electronics.groupby(['year', 'category_code']).size().reset_index(name='Number of Purchases')
+
+    # Select the top categories for each year
+    jewelry_top_categories = jewelry_counts.groupby('year').apply(lambda x: x.nlargest(10, 'Number of Purchases')).reset_index(drop=True)
+    electronics_top_categories = electronics_counts.groupby('year').apply(lambda x: x.nlargest(10, 'Number of Purchases')).reset_index(drop=True)
+
+    # Create a pivot table for easy plotting
+    jewelry_pivot = jewelry_top_categories.pivot(index='year', columns='category_code', values='Number of Purchases').fillna(0)
+    electronics_pivot = electronics_top_categories.pivot(index='year', columns='category_code', values='Number of Purchases').fillna(0)
+
+    # Create the area chart
+    fig, ax = plt.subplots(figsize=(10, 6))
+    jewelry_pivot.plot.area(ax=ax, alpha=0.9)
+    electronics_pivot.plot.area(ax=ax, alpha=0.5)
+
+    # Add labels and title to the graph
+    st.xlabel('Year and month'.upper(), fontweight='bold', fontsize=14)
+    st.ylabel('Number of Purchases'.upper(), fontweight='bold', fontsize=14)
+    st.title('Comparison of Purchases: Jewelry vs. Electronics'.upper(), fontweight='bold', fontsize=14)
+
+    # Rotate the x-axis tick labels for better readability
+    plt.xticks(rotation=45)
+
+    # Adjust the legend position
+    plt.legend(loc='upper left')
+
+    # Display the area chart
+    plt.tight_layout()
+    st.pyplot(fig)
+    
 #function to create bar chart1
 def barchart1():
     # Filter the data for the year 2018
@@ -578,7 +632,7 @@ def linegraph2():
 
     # Create a line graph
     fig, ax = plt.subplots()
-    ax.plot(revenue_by_year.index, revenue_by_year.values, marker='o')
+    ax.plot(revenue_by_year.index.values, revenue_by_year.values, marker='o')
 
     # Set the title and axis labels
     ax.set_title('Revenue of Jewelry by Year')
@@ -588,11 +642,14 @@ def linegraph2():
     # Show the grid
     ax.grid(True)
 
-    # Show the plot
-    st.pyplot(fig)   
+    # Display the plot in Streamlit
+    st.pyplot(fig)
 
 #function to crete line graph 3
 def linegraph3():
+    jewelry_data = pd.read_csv('modified2.csv')
+    electronic_data = pd.read_csv('modified.csv')
+    
     # Convert event_time to datetime for jewelry dataset
     jewelry_data['event_time'] = pd.to_datetime(jewelry_data['event_time'])
 
@@ -635,8 +692,9 @@ def linegraph3():
     # Show the legend
     ax.legend()
 
-    # Show the plot
+    # Display the plot in Streamlit
     st.pyplot(fig)
+
 
 #function for histogram
 def histogram1():
@@ -837,8 +895,58 @@ def wordcloud():
     # Display the word cloud in Streamlit
     st.pyplot(fig)
 
-# Show the plot
-plt.show()
+def treemap():
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    # Load the dataset
+    df = pd.read_csv('2019-Nov behaviour data.csv', nrows=1000000)
+
+    # Filter out rows with missing values in the desired columns
+    filtered_df = df.dropna(subset=['category_code', 'brand', 'price'])
+
+    # Group by category and brand, and count the occurrences
+    occurrence_df = filtered_df.groupby(['category_code', 'brand']).size().reset_index(name='occurrences')
+
+    # Sort by occurrences in descending order and select the top 10 category-brands
+    top_10_occurrences = occurrence_df.sort_values('occurrences', ascending=False).head(10)
+
+    # Filter the dataframe to include only the top 10 category-brands
+    filtered_top_10 = filtered_df.merge(top_10_occurrences, on=['category_code', 'brand'])
+
+    # Calculate the average price for each of the top 10 category-brands
+    average_prices = filtered_top_10.groupby(['category_code', 'brand'])['price'].mean().reset_index()
+
+    # Prepare the data for treemap
+    labels = average_prices['category_code'] + ' - ' + average_prices['brand']
+    sizes = average_prices['price']
+
+    # Set up color map and normalize the sizes
+    cmap = cm.get_cmap('YlOrRd')
+    norm = plt.Normalize(vmin=sizes.min(), vmax=sizes.max())
+    colors = [cmap(norm(value)) for value in sizes]
+
+    # Increase the canvas size of the treemap
+    fig = plt.figure(figsize=(19, 15))
+    ax = fig.add_subplot()
+
+    # Plot the treemap with colors
+    squarify.plot(sizes=sizes, label=labels, ax=ax, color=colors)
+
+    # Add a title
+    ax.set_title('Top 10 Category-Brands (Avg. Price) - Treemap')
+
+    # Remove axis labels
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    # Create a colorbar legend
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    cbar = fig.colorbar(sm, ax=ax, orientation='vertical', pad=0.05)
+    cbar.set_label('Price')
+
+    # Display the chart in Streamlit
+    st.pyplot(fig)
+
 #function to create heatmap1
 def heatmap1():
     electronic_data = pd.read_csv('electronics.csv', nrows=10000)
@@ -1113,10 +1221,11 @@ def main():
     button_area = st.button('Area Chart')
     button_bubble = st.button('Bubble Graph')
     button_cloud = st.button('Word Cloud')
+    button_tree = st.button('Tree Map')
     button_heat = st.button('Heatmap')
     button_rand = st.button('Random Forest Classification')
     button_assoc = st.button('Association')
-    button_logistic = st.button('Logistic Regression')
+    #button_logistic = st.button('Logistic Regression')
    
     # Handle button clicks
     if button_scatter:
@@ -1129,6 +1238,7 @@ def main():
     elif button_area:
         areachart1()
         areachart2()
+        areachart3()
     elif button_bar:
         barchart1()
         barchart2()
@@ -1138,7 +1248,7 @@ def main():
     elif button_line:
         linegraph1()
         linegraph2()
-        linegraph3()
+        #linegraph3()
     elif button_hist:
         histogram1()
         histogram2()
@@ -1153,15 +1263,17 @@ def main():
         wordcloud()
     elif button_heat:
         heatmap1()
-        heatmap2()   
+        heatmap2()
+    elif button_tree:
+        treemap()
     elif button_rand:
         random_forest()
     elif button_assoc:
        #association()
         association2()
         association3()
-    elif button_logistic:
-        logistic_regression()
+   # elif button_logistic:
+        #logistic_regression()
 
 # Run the Streamlit app
 if __name__ == '__main__':
